@@ -1,0 +1,36 @@
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+training/.venv/
+.venv/
+
+# Local training artefacts (weights that ship with the solution live in
+# solution/weights/)
+training/run_*/
+runs/
+*.onnx
+*.engine
+
+# Data that is too large or not redistributable with the repository
+data/
+dataset/generated/
+dataset/generated_4060/
+dataset/quarantine/
+dataset/images/
+dataset/real_review_inbox/*.jpg
+dataset/real_review_inbox/*.png
+
+# Base pretrained checkpoints (downloaded, not part of the solution)
+yolov8n.pt
+/weights/
+
+# Organizers' materials, internal notes and local scratch
+*.pdf
+logs.txt
+PLAN.md
+PROMPT.MD
+
+dataset/sources.json
+training/gpu_report.txt
+dataset/real_review_inbox/annotation_errors.log

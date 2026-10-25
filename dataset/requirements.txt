@@ -1,0 +1,4 @@
+requests>=2.31,<3
+Pillow>=10,<12
+kaggle>=1.6,<2
+roboflow>=1.1,<2
