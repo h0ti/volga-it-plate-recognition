@@ -222,7 +222,9 @@ def result_rows(
                         entry[1] += 1.0
                 if votes:
                     (best_text, plate_type), (weight, count) = max(
-                        votes.items(), key=lambda item: (item[1][0], item[1][1])
+                        votes.items(),
+                        key=lambda item: item[1][0]
+                        * (1 + sum(1 for character in item[0][0] if character != "#")),
                     )
                     plate_num = best_text
                     confidence *= min(weight / max(count, 1.0), 1.0)
