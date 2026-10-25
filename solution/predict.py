@@ -309,11 +309,26 @@ def main(argv: list[str] | None = None) -> int:
         started = time.perf_counter()
         rows: list[dict[str, str]] = []
         fallback_imgsz = max(args.imgsz, 960)
+        failed = 0
         for path in files:
-            result = detect_with_fallback(
-                model, path, args.imgsz, args.conf, args.device, fallback_imgsz
-            )
-            rows.extend(result_rows([result], root, ocr))
+            try:
+                result = detect_with_fallback(
+                    model, path, args.imgsz, args.conf, args.device, fallback_imgsz
+                )
+                rows.extend(result_rows([result], root, ocr))
+            except Exception as exc:  # noqa: BLE001 - one bad file must not kill the run
+                failed += 1
+                print(f"Skipped unreadable image {path.name}: {exc}", file=sys.stderr)
+                try:
+                    image_name = path.resolve().relative_to(root.resolve()).as_posix()
+                except ValueError:
+                    image_name = path.name
+                rows.append({
+                    "image": image_name,
+                    "plate_num": "",
+                    "plate_type": "other",
+                    "confidence": "0.0000",
+                })
         elapsed = time.perf_counter() - started
         write_csv(rows, args.output)
     except (OSError, RuntimeError, ValueError) as exc:
