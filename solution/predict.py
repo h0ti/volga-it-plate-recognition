@@ -203,23 +203,32 @@ def result_rows(
                     and float(target.conf.item()) < 0.5
                 ):
                     hypotheses.append("type1a" if plate_type == "type1" else "type1")
-                candidates = [
-                    _crop_for_ocr(result, target, pad)[0]
-                    for pad in ((0.02, 0.06), (0.05, 0.14), (0.10, 0.24))
+                # The detector box is the most trustworthy crop: extra margins only
+                # add background, so they vote with half the weight. The tight crop
+                # carries more character detail (occlusion like a mounting bolt on
+                # the plate edge otherwise turns O into C).
+                weighted_candidates: list[tuple[Image.Image | None, float]] = [
+                    (_crop_for_ocr(result, target, pad)[0], weight)
+                    for pad, weight in (
+                        ((0.0, 0.0), 2.0),
+                        ((0.02, 0.06), 1.0),
+                        ((0.05, 0.14), 1.0),
+                        ((0.10, 0.24), 1.0),
+                    )
                 ]
-                candidates.append(_crop_with_aspect(result, target, 2.6))
-                candidates.append(_crop_with_aspect(result, target, 3.2))
+                weighted_candidates.append((_crop_with_aspect(result, target, 2.6), 1.0))
+                weighted_candidates.append((_crop_with_aspect(result, target, 3.2), 1.0))
                 # Vote across crops/layouts instead of trusting a single lucky crop:
                 # a correct reading usually repeats, a one-character slip does not.
                 votes: dict[tuple[str, str], list[float]] = {}
-                for candidate in candidates:
+                for candidate, weight in weighted_candidates:
                     if candidate is None:
                         continue
                     for hypothesis in hypotheses:
                         text, text_confidence = ocr.recognize(candidate, hypothesis)
                         entry = votes.setdefault((text, hypothesis), [0.0, 0.0])
-                        entry[0] += max(text_confidence, 0.05)
-                        entry[1] += 1.0
+                        entry[0] += max(text_confidence, 0.05) * weight
+                        entry[1] += weight
                 if votes:
                     (best_text, plate_type), (weight, count) = max(
                         votes.items(),
