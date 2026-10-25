@@ -163,7 +163,12 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--synth-meta", type=Path, default=PROJECT_ROOT / "dataset/generated_4060/meta.csv")
     parser.add_argument("--synth-root", type=Path, default=PROJECT_ROOT / "dataset/generated_4060")
     parser.add_argument("--out", type=Path, default=PROJECT_ROOT / "training/run_ocr_v2/ocr_v2_best.pt")
-    parser.add_argument("--init", type=Path, default=PROJECT_ROOT / "solution/weights/ocr_best.pt")
+    parser.add_argument(
+        "--init",
+        type=Path,
+        default=None,
+        help="Optional checkpoint to start from; without it the model trains from scratch.",
+    )
     parser.add_argument("--epochs", type=int, default=12)
     parser.add_argument("--batch", type=int, default=64)
     parser.add_argument("--lr", type=float, default=3e-4)

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import random
 from pathlib import Path
+from typing import Sequence
 
 import numpy as np
 import torch
@@ -142,16 +143,29 @@ def format_plate_text(text: str, plate_type: str) -> str:
 
 
 class PlateOCR:
-    """Load a local checkpoint and recognize a single plate crop."""
+    """Load one or more local checkpoints and recognize a single plate crop.
 
-    def __init__(self, checkpoint: Path, device: str = "cpu") -> None:
+    Several checkpoints are combined by averaging their per-character
+    probabilities, which is cheap and makes the recognizer more robust on
+    blurry crops than any single model.
+    """
+
+    def __init__(self, checkpoint: Path | Sequence[Path], device: str = "cpu") -> None:
         self.device = torch.device(f"cuda:{device}" if device.isdigit() else device)
-        state = torch.load(checkpoint, map_location=self.device, weights_only=True)
-        if state.get("alphabet") != ALPHABET:
-            raise ValueError("OCR checkpoint alphabet does not match this implementation.")
-        self.model = PlateCRNN()
-        self.model.load_state_dict(state["state_dict"])
-        self.model.to(self.device).eval()
+        checkpoints = (
+            [checkpoint] if isinstance(checkpoint, (str, Path)) else list(checkpoint)
+        )
+        if not checkpoints:
+            raise ValueError("At least one OCR checkpoint is required.")
+        self.models: list[PlateCRNN] = []
+        for path in checkpoints:
+            state = torch.load(path, map_location=self.device, weights_only=True)
+            if state.get("alphabet") != ALPHABET:
+                raise ValueError(f"OCR checkpoint alphabet mismatch: {path}")
+            model = PlateCRNN()
+            model.load_state_dict(state["state_dict"])
+            model.to(self.device).eval()
+            self.models.append(model)
 
     @torch.inference_mode()
     def recognize(
@@ -165,8 +179,14 @@ class PlateOCR:
             (1, 1, height, padded_width), 255, dtype=torch.uint8
         )
         batch[:, :, :, :width] = normalized
-        logits = self.model(batch.to(self.device).float().div_(255.0))
-        text, confidence = greedy_decode(logits[0], padded_width // 4)
+        batch = batch.to(self.device).float().div_(255.0)
+        probabilities = None
+        for model in self.models:
+            current = model(batch).softmax(dim=-1)
+            probabilities = current if probabilities is None else probabilities + current
+        assert probabilities is not None
+        averaged = probabilities / len(self.models)
+        text, confidence = greedy_decode(averaged[0].log(), padded_width // 4)
         formatted = format_plate_text(text, plate_type)
         if set(formatted) == {"#"}:
             return formatted, 0.0

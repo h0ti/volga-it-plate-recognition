@@ -75,7 +75,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--review", type=Path, default=PROJECT_ROOT / "dataset/real_review_inbox/review.csv")
     parser.add_argument("--images", type=Path, default=PROJECT_ROOT / "data/commons/images")
     parser.add_argument("--weights", type=Path, default=PROJECT_ROOT / "solution/weights/best.pt")
-    parser.add_argument("--ocr-weights", type=Path, default=PROJECT_ROOT / "solution/weights/ocr_best.pt")
+    parser.add_argument("--ocr-weights", type=str, default=str(PROJECT_ROOT / "solution/weights/ocr_v3.pt"))
     parser.add_argument("--device", default="0")
     parser.add_argument("--report", type=Path, default=PROJECT_ROOT / "training/run_eval_v2/report.md")
     args = parser.parse_args(argv)
@@ -84,7 +84,8 @@ def main(argv: list[str] | None = None) -> int:
 
     frames = load_annotations(args.review)
     detector = YOLO(str(args.weights))
-    ocr = PlateOCR(args.ocr_weights, args.device)
+    ocr_paths = [Path(part.strip()) for part in args.ocr_weights.split(",") if part.strip()]
+    ocr = PlateOCR(ocr_paths, args.device)
 
     det_hits = 0
     det_hits_typed = 0

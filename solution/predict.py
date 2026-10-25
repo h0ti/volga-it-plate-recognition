@@ -221,8 +221,11 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--weights", type=Path, required=True, help="Local detector checkpoint; no download.")
     parser.add_argument(
         "--ocr-weights",
-        type=Path,
-        help="Optional local CRNN checkpoint; without it target numbers are emitted as '#'.",
+        type=str,
+        help=(
+            "Optional local CRNN checkpoint(s), comma-separated for an ensemble; "
+            "without it target numbers are emitted as '#'."
+        ),
     )
     parser.add_argument("--output", type=Path, default=Path("predictions.csv"))
     parser.add_argument("--imgsz", type=int, default=640)
@@ -245,8 +248,14 @@ def main(argv: list[str] | None = None) -> int:
         parser.error(f"No supported images found: {args.input}")
     if not args.weights.is_file():
         parser.error(f"Local model weights not found; no network download attempted: {args.weights}")
-    if args.ocr_weights is not None and not args.ocr_weights.is_file():
-        parser.error(f"OCR checkpoint not found: {args.ocr_weights}")
+    ocr_paths = [
+        Path(part.strip())
+        for part in (args.ocr_weights or "").split(",")
+        if part.strip()
+    ]
+    for ocr_path in ocr_paths:
+        if not ocr_path.is_file():
+            parser.error(f"OCR checkpoint not found: {ocr_path}")
     try:
         from ultralytics import YOLO
         from solution.ocr import PlateOCR
@@ -256,7 +265,7 @@ def main(argv: list[str] | None = None) -> int:
 
     try:
         model = YOLO(str(args.weights))
-        ocr = PlateOCR(args.ocr_weights, args.device) if args.ocr_weights else None
+        ocr = PlateOCR(ocr_paths, args.device) if ocr_paths else None
         started = time.perf_counter()
         results = model.predict(
             source=[str(path) for path in files],
