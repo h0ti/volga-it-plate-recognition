@@ -2,7 +2,7 @@
 
 Usage (PowerShell, project root)::
 
-    training\.venv\Scripts\python.exe training\train_ocr_v2.py --epochs 12
+    .\training\.venv\Scripts\python.exe training\train_ocr_v2.py --epochs 12
 
 The script reports character error rate on a held-out slice of real manually
 annotated plates, which is the metric the previous synthetic-only model failed.
