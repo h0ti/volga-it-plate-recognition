@@ -25,11 +25,9 @@ dataset/real_review_inbox/*.png
 yolov8n.pt
 /weights/
 
-# Organizers' materials, internal notes and local scratch
+# Organizers' materials and local scratch
 *.pdf
 logs.txt
-PLAN.md
-PROMPT.MD
 
 dataset/sources.json
 training/gpu_report.txt

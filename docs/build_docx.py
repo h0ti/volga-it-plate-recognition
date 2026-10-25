@@ -44,10 +44,15 @@ def flush_table(document, rows: list[str]) -> None:
                     run.bold = True
 
 
-def convert(source: Path, destination: Path) -> None:
+def convert(source: Path, destination: Path, author: str = "h0ti") -> None:
     """Convert the note and save it next to the Markdown source."""
     lines = source.read_text(encoding="utf-8").splitlines()
     document = Document()
+    properties = document.core_properties
+    properties.author = author
+    properties.last_modified_by = author
+    properties.comments = ""
+    properties.title = "Пояснительная записка — распознавание ГРЗ РФ"
     style = document.styles["Normal"]
     style.font.name = "Calibri"
     style.font.size = Pt(11)
@@ -111,7 +116,7 @@ def convert(source: Path, destination: Path) -> None:
 
 
 if __name__ == "__main__":
-    if len(sys.argv) != 3:
-        print("usage: build_docx.py <source.md> <destination.docx>", file=sys.stderr)
+    if len(sys.argv) not in (3, 4):
+        print("usage: build_docx.py <source.md> <destination.docx> [author]", file=sys.stderr)
         raise SystemExit(2)
-    convert(Path(sys.argv[1]), Path(sys.argv[2]))
+    convert(Path(sys.argv[1]), Path(sys.argv[2]), sys.argv[3] if len(sys.argv) == 4 else "h0ti")
