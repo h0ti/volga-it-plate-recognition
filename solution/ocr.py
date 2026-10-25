@@ -1,4 +1,4 @@
-"""Small CRNN/CTC OCR model for locally detected Russian plate crops."""
+﻿"""Small CRNN/CTC OCR model for locally detected Russian plate crops."""
 
 from __future__ import annotations
 

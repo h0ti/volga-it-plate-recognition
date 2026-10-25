@@ -2,7 +2,7 @@
 
 Usage (PowerShell, project root)::
 
-    .\training\.venv\Scripts\python.exe training\train_ocr_v2.py --epochs 12
+    training/.venv/Scripts/python.exe training/train_ocr_v2.py --epochs 12
 
 The script reports character error rate on a held-out slice of real manually
 annotated plates, which is the metric the previous synthetic-only model failed.
@@ -59,6 +59,7 @@ class MixedPlateDataset(Dataset[tuple[torch.Tensor, torch.Tensor]]):
         epoch_len: int,
         seed: int,
         clean_seed: int,
+        aug_strength: float = 1.0,
     ) -> None:
         self.real = real
         self.scene = scene
@@ -67,6 +68,7 @@ class MixedPlateDataset(Dataset[tuple[torch.Tensor, torch.Tensor]]):
         self.seed = seed
         self.epoch = 0
         self.order: list[int] = []
+        self.aug_strength = aug_strength
 
     def set_epoch(self, epoch: int) -> None:
         """Rebuild the deterministic sampling order for an epoch."""
@@ -89,7 +91,7 @@ class MixedPlateDataset(Dataset[tuple[torch.Tensor, torch.Tensor]]):
     def __getitem__(self, index: int) -> tuple[torch.Tensor, torch.Tensor]:
         rng = random.Random(self.seed + self.epoch * 100_003 + index)
         sample = self._pick(rng)
-        image = augment_plate(sample.image, rng)
+        image = augment_plate(sample.image, rng, strength=self.aug_strength)
         tensor = prepare_plate_crop(image, sample.plate_type)
         return tensor, encode(sample.text)
 
@@ -177,6 +179,12 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--real-holdout", type=int, default=40)
     parser.add_argument("--val-synth", type=int, default=300)
     parser.add_argument("--seed", type=int, default=20261025)
+    parser.add_argument(
+        "--aug-strength",
+        type=float,
+        default=1.0,
+        help="Scale blur/rotation/perspective ranges; >1 makes the domain harder.",
+    )
     parser.add_argument("--device", default="0")
     parser.add_argument("--workers", type=int, default=2)
     return parser
@@ -228,7 +236,8 @@ def main(argv: list[str] | None = None) -> int:
     scene_train = scene
 
     dataset = MixedPlateDataset(
-        real_train, scene_train, args.clean_count, args.epoch_len, args.seed, args.seed + 7
+        real_train, scene_train, args.clean_count, args.epoch_len, args.seed, args.seed + 7,
+        aug_strength=args.aug_strength,
     )
     model = PlateCRNN()
     if args.init and args.init.is_file():

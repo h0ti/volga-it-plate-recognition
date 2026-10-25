@@ -148,8 +148,12 @@ def _random_quad(width: int, height: int, rng: random.Random, strength: float) -
     return [tl[0], tl[1], bl[0], bl[1], br[0], br[1], tr[0], tr[1]]
 
 
-def augment_plate(image: Image.Image, rng: random.Random) -> Image.Image:
-    """Photometric and geometric augmentation that mimics camera footage."""
+def augment_plate(image: Image.Image, rng: random.Random, strength: float = 1.0) -> Image.Image:
+    """Photometric and geometric augmentation that mimics camera footage.
+
+    ``strength`` scales the blur, rotation, perspective and resolution-loss
+    ranges; values above 1.0 produce harder samples for domain adaptation.
+    """
     work = image.convert("RGB")
     width, height = work.size
 
@@ -166,13 +170,20 @@ def augment_plate(image: Image.Image, rng: random.Random) -> Image.Image:
         work = work.transform(
             work.size,
             Image.QUAD,
-            data=_random_quad(work.width, work.height, rng, rng.uniform(0.01, 0.05)),
+            data=_random_quad(
+                work.width, work.height, rng, rng.uniform(0.01, 0.05) * strength
+            ),
             resample=Image.BICUBIC,
         )
     if rng.random() < 0.5:
-        work = work.rotate(rng.uniform(-5.0, 5.0), resample=Image.BICUBIC, expand=False, fillcolor=(110, 110, 110))
+        work = work.rotate(
+            rng.uniform(-5.0, 5.0) * strength,
+            resample=Image.BICUBIC,
+            expand=False,
+            fillcolor=(110, 110, 110),
+        )
     if rng.random() < 0.5:
-        factor = rng.uniform(0.45, 1.0)
+        factor = rng.uniform(max(0.3, 0.45 / strength), 1.0)
         work = work.resize(
             (max(24, int(work.width * factor)), max(10, int(work.height * factor))),
             Image.BILINEAR,
@@ -185,7 +196,9 @@ def augment_plate(image: Image.Image, rng: random.Random) -> Image.Image:
     if rng.random() < 0.4:
         work = ImageEnhance.Color(work).enhance(rng.uniform(0.0, 1.2))
     if rng.random() < 0.55:
-        work = work.filter(ImageFilter.GaussianBlur(rng.uniform(0.2, 1.4)))
+        work = work.filter(
+            ImageFilter.GaussianBlur(rng.uniform(0.2, min(1.4 * strength, 2.5)))
+        )
     if rng.random() < 0.2:
         work = work.filter(ImageFilter.MedianFilter(3))
 

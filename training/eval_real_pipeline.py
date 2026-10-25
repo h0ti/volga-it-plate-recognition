@@ -31,7 +31,7 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from solution.ocr import PlateOCR  # noqa: E402
-from solution.predict import result_rows  # noqa: E402
+from solution.predict import detect_with_fallback, result_rows  # noqa: E402
 
 
 def iou(a: tuple[int, int, int, int], b: tuple[int, int, int, int]) -> float:
@@ -98,7 +98,7 @@ def main(argv: list[str] | None = None) -> int:
 
     for frame, annotations in sorted(frames.items()):
         path = args.images / frame
-        result = detector.predict(str(path), imgsz=640, conf=0.25, device=args.device, verbose=False)[0]
+        result = detect_with_fallback(detector, path, 640, 0.25, args.device)
         boxes = result.boxes if result.boxes is not None else []
         image = Image.open(path).convert("RGB")
 
